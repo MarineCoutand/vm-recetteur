@@ -1,0 +1,111 @@
+---
+- hosts: all
+  remote_user: vagrant
+  become: true
+  
+  vars:
+    - apt_file: /etc/apt/sources.list.d/google-chrome.list
+
+  tasks:
+    - name: Update and upgrade apt package
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+# Firefox
+    
+    - name: Install firefox
+      apt:
+        name: firefox-esr
+        state: present
+
+# Chrome
+
+    - name: Does the Google apt file exist?
+      command: test -f {{apt_file}}
+      register: google_apt_exists
+      ignore_errors: True
+
+    - name: Add Google Chrome key
+      shell: wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+      when: google_apt_exists.rc == 1
+
+    - name: Add Google Chrome repo
+      copy: content="deb http://dl.google.com/linux/chrome/deb/ stable main" dest={{apt_file}} owner=root group=root mode=644
+      when: google_apt_exists.rc == 1
+
+    - name: Update apt cache
+      apt: update_cache=yes
+      when: google_apt_exists.rc == 1
+
+    - name: Install Google Chrome
+      apt: pkg=google-chrome-stable state=present
+
+
+# Soap UI
+
+
+    - name: Create SoapUI Directory
+      file: name=/opt/soapui
+            state=directory
+            
+    - name: Download SoapUI binaries
+      get_url: url=http://dl.eviware.com/soapuios/5.2.1/SoapUI-5.2.1-linux-bin.tar.gz#_ga=2.219761755.392192248.1597655941-1014675761.1597655941
+               dest=~/soapui-5.2.1.tar.gz
+               mode='0777'
+    
+    - name: Untar SoapUI
+      unarchive:
+        copy=no
+        src=~/soapui-5.2.1.tar.gz
+        dest=/opt/soapui
+    
+# Squirrel
+
+    - name: Create Squirrel Directory
+      file: name=/opt/squirrelsql
+            state=directory
+            
+    - name: Download Squirrel .jar
+      get_url:
+        url=https://freefr.dl.sourceforge.net/project/squirrel-sql/1-stable/4.1.0/squirrel-sql-4.1.0-standard.jar
+        dest=/opt/squirrelsql/squirrel-sql-4.1.0-standard.jar
+        mode='0777'
+    
+    - name: Download script_installation_squirrel.xml
+      get_url:
+        url: https://github.com/nautom4/script_squirrel/raw/master/script_installation_squirrel.xml
+        dest: /opt/squirrelsql/script_installation_squirrel.xml  
+    
+    - name: Launch script_installation_squirrel
+      shell: java -jar /opt/squirrelsql/squirrel-sql-4.1.0-standard.jar -f /opt/squirrelsql/script_installation_squirrel.xml
+      become: yes
+    
+    - name: Download mysql driver
+      get_url:
+        url: https://raw.githubusercontent.com/jibel/squirrelsql-snap/master/data/drivers/mysql-connector-java-5.1.45.jar
+        dest: /home/vagrant/squirrel-sql-4.1.0/lib/mysql-connector-java-5.1.45.jar
+    
+    - name: Download postgresql driver
+      get_url:
+        url: https://raw.githubusercontent.com/jibel/squirrelsql-snap/master/data/drivers/postgresql.jar
+        dest: /home/vagrant/squirrel-sql-4.1.0/lib/postgresql.jar
+
+# Zap proxy
+    
+    - name: Create Zap proxy Directory
+      file: name=/opt/zaproxy
+            state=directory
+    
+    - name: Download Zap proxy
+      get_url:
+        url: https://github.com/zaproxy/zaproxy/releases/download/v2.9.0/ZAP_2.9.0_Linux.tar.gz
+        dest: ~/ZAP_2.9.0_Linux.tar.gz
+        
+    - name: Untar Zap proxy
+      unarchive:
+        copy=no
+        src=~/ZAP_2.9.0_Linux.tar.gz
+        dest=/opt/zaproxy/
+          
+
